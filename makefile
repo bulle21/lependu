@@ -3,7 +3,7 @@ CC = gcc
 #CFLAGS = -Wall -Wextra -std=c99
 CFLAGS = -Wall 
 LDFLAGS = -lncurses
-TARGET = lependu
+TARGET = lependu score.hi
 SRC = lependu.c
 OBJ = $(SRC:.c=.o)
 all: $(TARGET)
