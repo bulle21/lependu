@@ -1,32 +1,33 @@
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <ncurses.h>
+#include "pendu.h"
 
-#define MAX_WORD_LENGTH 100
-#define MAX_WRONG_LETTERS 10
-#define DICO "dico.txt"
-#define INITIAL_CAPACITY 1000
+// les globales
+int 	record,score,max_erreurs,word_count;
+char 	*mot_a_chercher,
+     	**dictionary;
 
-//#define DEBUG	1
+// lecture du score dans un fichier
+void lectureScoreDansFichier(void) 
+{
+FILE *file;
 
-int max_erreurs;
+file = fopen(FICHIER_DES_SCORES, "r");
+if(file != NULL) {
+	fscanf(file,"Score:%d",&record);
+    	fclose(file); 
+    	} 
+}
 
-// Enum pour représenter les étapes du dessin du pendu
-typedef enum {
-    POTENCE,
-    TETE,
-    CORPS,
-    BRAS_GAUCHE,
-    BRAS_DROIT,
-    JAMBE_GAUCHE,
-    JAMBE_DROITE,
-    COMPLET
-} PenduEtat;
+// ecriture du score dans un fichier
+void ecrireScoreDansFichier(void) 
+{
+FILE *file;
+
+file = fopen(FICHIER_DES_SCORES, "w");
+if(file != NULL) {
+    fprintf(file, "Score:%d\n",score); 
+    fclose(file); 
+    } 
+}
 
 char **read_dictionary(const char *filename, int *word_count) 
 {
@@ -45,11 +46,11 @@ words = (char **) malloc(INITIAL_CAPACITY * sizeof(char *));
 capacity = INITIAL_CAPACITY;
 *word_count = 0;
     
-while((bytes_read = pread(fd, buffer, sizeof(buffer) - 1, current_pos)) > 0) {
+while((bytes_read = pread(fd, buffer,sizeof(buffer) - 1,current_pos)) > 0) {
     buffer[bytes_read] = '\0';
         
     // Recherche de la fin de ligne (0D0A)
-    line_end = strstr(buffer, "\r\n");
+    line_end = strstr(buffer,"\r\n");
     if(line_end) {
         *line_end = '\0';
             
@@ -77,11 +78,13 @@ while((bytes_read = pread(fd, buffer, sizeof(buffer) - 1, current_pos)) > 0) {
     }
     
 close(fd);
-return words;
+return(words);
 }
 
 char *select_random_word(char **words, int word_count) 
 {
+int random_index;
+
 if(word_count == 0) 
     return(NULL);
     
@@ -89,7 +92,7 @@ if(word_count == 0)
 srand(time(NULL));
     
 // Sélectionner un mot aléatoire
-int random_index = rand() % word_count;
+random_index = rand() % word_count;
 return(words[random_index]);
 }
 
@@ -187,22 +190,49 @@ else if(longueur <= 10)
 return(8);                // Mots très longs
 }
 
+void finish(int n)
+{
+if(record < score)
+	ecrireScoreDansFichier();
+
+// Libération mémoire et fermeture ncurses
+free(mot_a_chercher);
+free_dictionary(dictionary,word_count);
+
+endwin();
+exit(n);
+}
+
+
 int main(int n,char **t) 
 {
-int 		i,trouve,ch,word_count;
-char 	**dictionary,
-	mot_affiche[MAX_WORD_LENGTH],
-	*mot_a_chercher,dico[32],
+int 	essais = 0,i,trouve,ch;
+char 	choix,mot_affiche[MAX_WORD_LENGTH],
+	rejouer,dico[32],
 	lettre_deja_saisie = 0,
 	lettres_incorrectes[MAX_WRONG_LETTERS] = {0}; // Tableau pour stocker les lettres incorrectes
 int 	nb_lettres_incorrectes = 0,erreurs = 0,lettres_trouvees = 0;
     
 if(n == 2) strcpy(dico,t[1]); else strcpy(dico,DICO); 
 
+//decoupe des fichiers de mots dans un tableau en memoire avec des 0 en caractere terminateur
 if((dictionary = read_dictionary(dico,&word_count)) == NULL) {
     fprintf(stderr, "impossible de lire le fichier %s\n", DICO);
     return(-1);
     }
+
+// lecture du score dans un fichier
+record = score = 0;
+lectureScoreDansFichier();
+			       
+//les signaux ...
+(void) signal(SIGINT, finish);           /* arrange interrupts to terminate */
+signal(SIGABRT,finish);
+signal(SIGQUIT,finish);
+signal(SIGKILL,finish);
+signal(SIGTERM,finish);
+signal(SIGCONT,finish);
+
 
 // Initialisation ncurses avec plus de contrôles
 initscr();            // Initialise l'écran
@@ -217,15 +247,14 @@ use_default_colors(); // utilise les couleurs de fond par defaut
 // Initialisation des couleurs
 init_pair(1,COLOR_BLUE,-1);
 init_pair(2,COLOR_BLUE,-1);
+init_pair(3,COLOR_GREEN,-1);
+init_pair(4,COLOR_RED,-1);
 
 // Définir le fond de l'écran principal
 bkgd(COLOR_PAIR(2));
 clear();
 refresh();
 
-// Choisir un mot aléatoirement
-mot_a_chercher = strdup(select_random_word(dictionary,word_count));
-    
 // Fenêtre principale
 WINDOW *win_jeu = newwin(20,50,2,2);
 wbkgd(win_jeu,COLOR_PAIR(1));
@@ -235,6 +264,11 @@ box(win_jeu,0,0);
 WINDOW *win_pendu = newwin(10,30,2,55);
 wbkgd(win_pendu, COLOR_PAIR(2));
 box(win_pendu,0,0);
+
+// Titre du jeu
+mvwprintw(win_jeu,2,15,"JEU DU PENDU");
+mvwprintw(win_jeu,18,35,"Score:%3d/%3d",score,essais);
+mvwprintw(win_jeu,18,2,"Record:%3d",record);
     
 // Fenêtre pour les lettres incorrectes
 WINDOW *win_lettres_incorrectes = newwin(10,30,12,55);
@@ -246,21 +280,27 @@ mvwprintw(win_lettres_incorrectes,1,2,"Lettres incorrectes :");
 WINDOW *win_fin = newwin(10,83,24,2);
 wbkgd(win_fin, COLOR_PAIR(2));
 box(win_fin,0,0);
+
+do {
+
+// Choisir un mot aléatoirement
+mot_a_chercher = strdup(select_random_word(dictionary,word_count));
     
 // Initialisation du jeu
-for(i = 0; i < strlen(mot_a_chercher);i++) 
+for(i = 0;i < strlen(mot_a_chercher);i ++) 
     mot_affiche[i] = '_';
 mot_affiche[strlen(mot_a_chercher)] = '\0';
 max_erreurs = calcul_max_tentatives(mot_a_chercher);
-    
-// Titre du jeu
-mvwprintw(win_jeu,2,15,"JEU DU PENDU");
-    
+for(i = 0;i < MAX_WRONG_LETTERS;i ++)
+	lettres_incorrectes[i] = 0; 
+nb_lettres_incorrectes = erreurs = lettres_trouvees = lettre_deja_saisie = 0;
+
 while(erreurs < max_erreurs && lettres_trouvees < strlen(mot_a_chercher)) {
     // Effacer et réinitialiser les fenêtres
-    wclear(win_jeu);
-    box(win_jeu, 0, 0);
-    mvwprintw(win_jeu,2,15,"JEU DU PENDU");
+    
+    // wclear(win_jeu);
+    //box(win_jeu, 0, 0);
+    //mvwprintw(win_jeu,2,15,"JEU DU PENDU");
         
     // Afficher le mot
     mvwprintw(win_jeu,5,2,"Mot : ");
@@ -301,7 +341,7 @@ while(erreurs < max_erreurs && lettres_trouvees < strlen(mot_a_chercher)) {
     
     //verifier que une bonne lettre deja trouve ne passe pas en mauvaise reponse en incremnetant lettres_incorrectes
     if(deja_trouve(ch,mot_affiche,strlen(mot_a_chercher)))
-	continue;    
+	    continue;    
 
     trouve = 0;
     for(i = 0; i < strlen(mot_a_chercher);i ++) 
@@ -349,28 +389,68 @@ while(erreurs < max_erreurs && lettres_trouvees < strlen(mot_a_chercher)) {
         mvwprintw(win_lettres_incorrectes,2 + i/10,2 + (i%10)*2, "%c", lettres_incorrectes[i]);
 
 if(lettres_trouvees >= strlen(mot_a_chercher)) {
-    mvwprintw(win_fin, 2, 2, "Félicitations ! Vous avez gagné !");
-    mvwprintw(win_fin, 3, 2, "Le mot était : %s", mot_a_chercher);
-    } 
+        wattron(win_fin,COLOR_PAIR(3));
+    	mvwprintw(win_fin, 2, 2, "Félicitations ! Vous avez gagné !");
+    	mvwprintw(win_fin, 3, 2, "Le mot était : %s", mot_a_chercher);
+	mvwprintw(win_jeu,18,35,"Score:%3d/%3d",++ score,++essais);
+        wattroff(win_fin,COLOR_PAIR(3));
+    	} 
 else {
-    mvwprintw(win_fin, 2, 2, "Dommage ! Vous avez perdu.");
-    mvwprintw(win_fin, 3, 2, "Le mot était : %s", mot_a_chercher);
-    // Dessiner le pendu selon les erreurs
-    dessiner_pendu(win_pendu, COMPLET);
-    }
+        wattron(win_fin,COLOR_PAIR(4));
+    	mvwprintw(win_fin,2,2,"Dommage ! Vous avez perdu.");
+        wattroff(win_fin,COLOR_PAIR(4));
+    	mvwprintw(win_fin,3,2,"Le mot était : %s", mot_a_chercher);
+    	// Dessiner le pendu selon les erreurs
+	essais ++;
+    	dessiner_pendu(win_pendu, COMPLET);
+#ifdef BEEP
+		beep();
+#endif
+    	}
     
 // Rafraîchir toutes les fenêtres
 wrefresh(win_jeu);
 wrefresh(win_pendu);
 wrefresh(win_lettres_incorrectes);
 wrefresh(win_fin);
+
+
+
+// Fenêtre de "rejouer"
+    WINDOW *win_rejouer = newwin(5, 40, (LINES - 5) / 2, (COLS - 40) / 2);
+    box(win_rejouer, 0, 0);
+    mvwprintw(win_rejouer, 1, 2, "Appuyez sur ESPACE pour rejouer");
+    mvwprintw(win_rejouer, 2, 2, "Ou sur une autre touche pour quitter.");
+    wrefresh(win_rejouer);
+
+    // Capturer la réponse
+    choix = wgetch(win_rejouer);
+    wclear(win_rejouer);
+    wrefresh(win_rejouer);
+    delwin(win_rejouer);
+
+    // Décider de rejouer ou non
+    rejouer = (choix == ' ');
+    if(rejouer)	{
+    	free(mot_a_chercher);
+    	wclear(win_jeu);
+    	box(win_jeu, 0, 0);
+    	mvwprintw(win_jeu,2,15,"JEU DU PENDU");
+	mvwprintw(win_jeu,18,35,"Score:%3d/%3d",score,essais);
+	mvwprintw(win_jeu,18,2,"Record:%3d",record);
+    	wclear(win_fin);
+    	wrefresh(win_fin);
+    	}
+
+
+} while(rejouer);    
+
+//wgetch(win_fin);
     
-wgetch(win_fin);
-    
-// Libération mémoire et fermeture ncurses
-free(mot_a_chercher);
-free_dictionary(dictionary, word_count);
-endwin();
-    
+//Libération mémoire et fermeture ncurses
+//free(mot_a_chercher);
+//free_dictionary(dictionary,word_count);
+
+finish(0);
 return(0);
 }
