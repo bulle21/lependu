@@ -1,0 +1,59 @@
+1. Installer ncurses sur Linux
+La bibliothèque ncurses est souvent incluse dans les distributions Linux, mais vous pouvez l'installer ou la mettre à jour avec le gestionnaire de paquets de votre distribution.
+
+a. Pour les systèmes basés sur Debian/Ubuntu :
+
+sudo apt update
+sudo apt install libncurses5-dev libncursesw5-dev
+b. Pour les systèmes basés sur Red Hat/Fedora :
+
+sudo dnf install ncurses-devel
+c. Pour les systèmes basés sur Arch Linux :
+
+sudo pacman -S ncurses
+d. Compilation depuis les sources :
+
+Si vous souhaitez installer une version spécifique de ncurses depuis les sources :
+
+Téléchargez les sources depuis le site officiel de GNU ncurses.
+Décompressez les fichiers :
+tar -xvzf ncurses-X.Y.tar.gz
+cd ncurses-X.Y
+Configurez, compilez et installez :
+./configure
+make
+sudo make install
+
+
+../..
+
+2. Installer ncurses sur macOS (via Homebrew)
+Sur macOS, vous pouvez utiliser Homebrew pour installer ncurses facilement.
+
+Assurez-vous que Homebrew est installé (sinon, suivez les instructions ici).
+Installez ncurses avec Homebrew :
+brew install ncurses
+Vérifiez l'installation :
+brew list ncurses
+
+
+
+3. Installer ncurses sur Windows 10
+Ncurses n'est pas nativement supporté sous Windows, mais vous pouvez l'utiliser via un environnement comme Cygwin, MSYS2, ou Windows Subsystem for Linux (WSL).
+
+a. Via Windows Subsystem for Linux (WSL) :
+
+Installez WSL en suivant les instructions de Microsoft.
+Une fois WSL installé, suivez les étapes de l'installation pour Linux ci-dessus en fonction de la distribution choisie (Ubuntu, Debian, etc.).
+b. Via Cygwin :
+
+Téléchargez l'installateur de Cygwin depuis leur site officiel.
+Pendant l'installation, sélectionnez libncurses-devel dans la liste des paquets.
+Terminez l'installation.
+c. Via MSYS2 :
+
+Téléchargez et installez MSYS2 depuis leur site officiel.
+Ouvrez une fenêtre MSYS2 et exécutez :
+pacman -S mingw-w64-x86_64-ncurses
+Vérifiez l'installation :
+pacman -Q ncurses
