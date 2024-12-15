@@ -9,3 +9,4 @@ Choisit dans un dictionnaire le mot à chercher et adapte la difficulte en adapt
 
 lancement : 
 lependu
+ou lependu dico.txt
