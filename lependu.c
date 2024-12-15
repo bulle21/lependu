@@ -12,7 +12,7 @@
 #define DICO "dico.txt"
 #define INITIAL_CAPACITY 1000
 
-#define DEBUG	1
+//#define DEBUG	1
 
 int max_erreurs;
 
@@ -115,23 +115,60 @@ void dessiner_pendu(WINDOW *win, PenduEtat etape)
     mvwprintw(win, 3, 10, "   |   |");
 
     // Dessin progressif selon l'état
-    if (etape >= TETE) 
-        mvwprintw(win, 4, 10, "   O   |");
-    if (etape >= CORPS) 
-        mvwprintw(win, 5, 10, "   |   |");
-    if (etape >= BRAS_GAUCHE) 
-        mvwprintw(win, 5, 10, "  /|   |");
-    if (etape >= BRAS_DROIT) 
-        mvwprintw(win, 5, 10, "  /|\\  |");
-    if (etape >= JAMBE_GAUCHE) 
-        mvwprintw(win, 6, 10, "  /    |");
-    if (etape >= JAMBE_DROITE) 
-        mvwprintw(win, 6, 10, "  / \\  |");
+    if (etape >= TETE) {
+       	    	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "       |");
+            	mvwprintw(win, 6, 10, "       |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
+    if (etape >= CORPS) {
+            	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "   |   |");
+            	mvwprintw(win, 6, 10, "       |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
+    if (etape >= BRAS_GAUCHE) {
+            	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "  /|   |");
+            	mvwprintw(win, 6, 10, "       |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
+    if (etape >= BRAS_DROIT) {
+            	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "  /|\\  |");
+            	mvwprintw(win, 6, 10, "       |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
+    if (etape >= JAMBE_GAUCHE) {
+            	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "  /|\\  |");
+            	mvwprintw(win, 6, 10, "  /    |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
+    if (etape >= JAMBE_DROITE) {
+            	mvwprintw(win, 4, 10, "   O   |");
+            	mvwprintw(win, 5, 10, "  /|\\  |");
+            	mvwprintw(win, 6, 10, "  / \\  |");
+            	mvwprintw(win, 7, 10, "       |");
+    		}
 
     // Ligne de base (toujours affichée)
     mvwprintw(win, 8, 10, "=========");
 
     wrefresh(win);
+}
+
+int deja_trouve(int ch,char *mot_affiche,int lg)
+{
+int i,trouve;
+
+trouve = 0;
+for(i = 0;i < lg;i ++)
+	if(mot_affiche[i] == ch && mot_affiche[i] != '_')	{
+		trouve = 1;
+		break;
+		}
+return(trouve);
 }
 
 // Fonction pour calcul dynamiquement les tentatives
@@ -150,18 +187,20 @@ else if(longueur <= 10)
 return(8);                // Mots très longs
 }
 
-int main(void) 
+int main(int n,char **t) 
 {
 int 		i,trouve,ch,word_count;
-char 	**dictionary = read_dictionary(DICO,&word_count),
+char 	**dictionary,
 	mot_affiche[MAX_WORD_LENGTH],
-	*mot_a_chercher,
+	*mot_a_chercher,dico[32],
 	lettre_deja_saisie = 0,
 	lettres_incorrectes[MAX_WRONG_LETTERS] = {0}; // Tableau pour stocker les lettres incorrectes
 int 	nb_lettres_incorrectes = 0,erreurs = 0,lettres_trouvees = 0;
     
-if(dictionary == NULL) {
-    fprintf(stderr, "Erreur : impossible de lire le fichier %s\n", DICO);
+if(n == 2) strcpy(dico,t[1]); else strcpy(dico,DICO); 
+
+if((dictionary = read_dictionary(dico,&word_count)) == NULL) {
+    fprintf(stderr, "impossible de lire le fichier %s\n", DICO);
     return(-1);
     }
 
@@ -259,15 +298,18 @@ while(erreurs < max_erreurs && lettres_trouvees < strlen(mot_a_chercher)) {
     // Vérifier si c'est une lettre valide
     if (ch < 'a' || ch > 'z') 
 	    continue;
-        
+    
+    //verifier que une bonne lettre deja trouve ne passe pas en mauvaise reponse en incremnetant lettres_incorrectes
+    if(deja_trouve(ch,mot_affiche,strlen(mot_a_chercher)))
+	continue;    
+
     trouve = 0;
-    for(i = 0; i < strlen(mot_a_chercher);i ++) {
+    for(i = 0; i < strlen(mot_a_chercher);i ++) 
         if(mot_a_chercher[i] == ch && mot_affiche[i] == '_') {
             mot_affiche[i] = ch;
             trouve = 1;
             lettres_trouvees ++;
             }
-        }
         
     if(!trouve) {
         // Vérifier si la lettre n'a pas déjà été saisie incorrectement
