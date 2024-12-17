@@ -1,4 +1,4 @@
-# lependu
+#  en langage C
 ecrit avec ncurses
 
 
